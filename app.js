@@ -184,7 +184,7 @@ async function apiFetch(url, options = {}) {
       ? await response.json()
       : { error: await response.text() };
 
-    if (response.status === 401) {
+    if (response.status === 401 && !url.startsWith('/api/auth/')) {
       state.user = null;
       localStorage.removeItem(LEGACY_USER_KEY);
       throw new Error('Please sign in to continue.');
@@ -330,6 +330,89 @@ function populateCats() {
     sel.innerHTML = cats().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     if (cats().includes(previous)) sel.value = previous;
   });
+
+  const filter = document.getElementById('txCatFilter');
+  if (filter) {
+    filter.innerHTML = ['All', ...cats()].map(c => `<option value="${escapeHtml(c)}">${c === 'All' ? 'All Categories' : escapeHtml(c)}</option>`).join('');
+    filter.value = cats().includes(state.filterCategory) ? state.filterCategory : 'All';
+    state.filterCategory = filter.value;
+  }
+}
+
+// -------------------------------------------------------------
+// BUDGETS & GOALS (server when signed in, local storage for guests)
+// -------------------------------------------------------------
+async function saveBudget(category, amount) {
+  if (state.user && isServerAvailable) {
+    try {
+      await apiFetch('/api/budgets', { method: 'POST', body: JSON.stringify({ category, amount, month: monthKey(new Date()) }) });
+      await loadAuthenticatedData();
+      return;
+    } catch (err) {
+      if (isServerAvailable) throw err;
+    }
+  }
+  const month = monthKey(new Date());
+  state.budgets = [
+    ...(state.budgets || []).filter(b => !(b.category === category && b.month === month)),
+    { id: 'b-' + Date.now(), category, month, amount }
+  ];
+  writeJson('digitalca_budgets_guest', state.budgets);
+  if (!cats().includes(category)) saveGuestCategories([...cats(), category]);
+}
+
+async function saveGoal(goal) {
+  if (state.user && isServerAvailable) {
+    try {
+      await apiFetch('/api/goals', { method: 'POST', body: JSON.stringify(goal) });
+      await loadAuthenticatedData();
+      return;
+    } catch (err) {
+      if (isServerAvailable) throw err;
+    }
+  }
+  state.goals = [...(state.goals || []), { id: 'g-' + Date.now(), current_amount: 0, ...goal }];
+  writeJson('digitalca_goals_guest', state.goals);
+}
+
+// Parses "10,000", "10k", "5 lakh", "1.2 cr" into rupees
+function parseRupees(num, unit = '') {
+  const n = Number(String(num || '').replace(/,/g, ''));
+  if (!Number.isFinite(n)) return 0;
+  const u = String(unit || '').toLowerCase();
+  if (u === 'k') return n * 1000;
+  if (/^(l|lac|lakh|lakhs)$/.test(u)) return n * 100000;
+  if (/^(cr|crore|crores)$/.test(u)) return n * 10000000;
+  return n;
+}
+
+const AMOUNT_RE = '(?:₹|rs\\.?\\s?|inr\\s?)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*(k|lakhs?|lac|l|crores?|cr)?\\b';
+
+function parseBudgetCommand(message) {
+  const m = message.match(new RegExp(`\\b(?:set|create|make|add|update)\\s+(?:my\\s+|a\\s+|the\\s+)?([a-z][a-z &]*?)\\s+budget\\s+(?:to|of|at|as|=)?\\s*${AMOUNT_RE}`, 'i'))
+    || message.match(new RegExp(`\\bbudget\\s+(?:for|of)\\s+([a-z][a-z &]*?)\\s+(?:to|of|at|as|=)?\\s*${AMOUNT_RE}`, 'i'));
+  if (!m) return null;
+  const amount = parseRupees(m[2], m[3]);
+  const raw = m[1].trim();
+  if (!raw || !(amount > 0)) return null;
+  return { category: raw.charAt(0).toUpperCase() + raw.slice(1), amount };
+}
+
+function parseGoalCommand(message) {
+  const m = message.match(new RegExp(`(?:create|set|add|start|new)\\s+(?:a|an|my)?\\s*${AMOUNT_RE}\\s*(.*?)\\bgoal\\b(?:.*?(\\d+)\\s*(years?|yrs?|months?))?`, 'i'));
+  if (!m) return null;
+  const targetAmount = parseRupees(m[1], m[2]);
+  if (!(targetAmount > 0)) return null;
+  const label = (m[3] || '').replace(/\b(?:a|an|for|of|the)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  let targetDate = null;
+  if (m[4]) {
+    const d = new Date();
+    if (/^m/i.test(m[5])) d.setMonth(d.getMonth() + Number(m[4]));
+    else d.setFullYear(d.getFullYear() + Number(m[4]));
+    targetDate = d.toISOString().slice(0, 10);
+  }
+  const name = label ? `${label.charAt(0).toUpperCase() + label.slice(1)} Goal` : 'Savings Goal';
+  return { name, target_amount: targetAmount, target_date: targetDate };
 }
 
 function renderBudgetGoalDashboard() {
@@ -842,7 +925,9 @@ async function saveInvestmentProfile(profile) {
       });
       state.investmentProfile = result.profile || profile;
       return;
-    } catch {}
+    } catch (err) {
+      if (isServerAvailable) throw err;
+    }
   }
   saveGuestProfile(profile);
 }
@@ -1128,7 +1213,9 @@ async function submitPortfolioForm(event) {
         notes: data.notes
       }) });
       await loadAuthenticatedData();
-    } catch {}
+    } catch (err) {
+      return showToast(err.message);
+    }
   } else {
     state.investments = [...(state.investments || []), data];
     writeJson('digitalca_investments_guest', state.investments);
@@ -1147,7 +1234,9 @@ async function deleteInvestment(id) {
     try {
       await apiFetch(`/api/investments/${encodeURIComponent(id)}`, { method:'DELETE' });
       await loadAuthenticatedData();
-    } catch {}
+    } catch (err) {
+      return showToast(err.message);
+    }
   } else {
     state.investments = (state.investments || []).filter(x => x.id !== id);
     writeJson('digitalca_investments_guest', state.investments);
@@ -1327,10 +1416,10 @@ function buildAssistantMessage(role, content) {
 
 function formatMarkdownText(t) {
   return escapeHtml(t)
-    .replace(/\n### (.*?)\n/g, '<h4 style="margin:8px 0 4px;font-family:Georgia,serif;font-size:15px;color:var(--navy)">$1</h4>')
+    .replace(/(^|\n)#{2,4} (.*?)(?=\n|$)\n?/g, '$1<h4 style="margin:8px 0 4px;font-family:Georgia,serif;font-size:15px;color:var(--navy)">$2</h4>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/• (.*?)(?=\n|$)/g, '<li style="margin-left:14px;list-style:disc">$1</li>')
+    .replace(/(^|\n)\s*(?:•|-) (.*?)(?=\n|$)/g, '$1<li style="margin-left:14px;list-style:disc">$2</li>')
     .replace(/\n\n/g, '<br><br>')
     .replace(/\n/g, '<br>');
 }
@@ -1487,10 +1576,26 @@ function ensureAssistantWidget() {
 }
 
 // Client-side Autonomous Financial Reasoning Engine
-function runClientAutonomousCA(message) {
+async function runClientAutonomousCA(message) {
   const lower = message.toLowerCase();
   const summary = dashboardTotals();
   const allTxs = visibleTxs();
+
+  // Budget command: "Set my food budget to ₹10,000"
+  const budget = parseBudgetCommand(message);
+  if (budget) {
+    await saveBudget(budget.category, budget.amount);
+    renderAll();
+    return `✓ Monthly budget for **${budget.category}** set to **₹${budget.amount.toLocaleString('en-IN')}**. Track it on your Dashboard under *Monthly Category Budgets*.`;
+  }
+
+  // Goal command: "Create a ₹5 lakh SIP goal for 3 years"
+  const goal = parseGoalCommand(message);
+  if (goal) {
+    await saveGoal(goal);
+    renderAll();
+    return `✓ Created goal **${goal.name}** with a target of **₹${goal.target_amount.toLocaleString('en-IN')}**${goal.target_date ? ` by **${goal.target_date}**` : ''}. It now appears under *Active Financial Goals* on your Dashboard.`;
+  }
 
   // Helper: Infer Category from text
   function inferCategory(text) {
@@ -1509,7 +1614,7 @@ function runClientAutonomousCA(message) {
   function inferMethod(text) {
     const t = text.toLowerCase();
     if (/card|credit|debit/i.test(t)) return 'Card';
-    if (/netbanking|net banking|neft|rtgs|imps/i.test(t)) return 'Net banking';
+    if (/netbanking|net banking|neft|rtgs|imps/i.test(t)) return 'Net Banking';
     if (/cash/i.test(t)) return 'Cash';
     return 'UPI';
   }
@@ -1521,11 +1626,11 @@ function runClientAutonomousCA(message) {
     const rawNum = expenseMatch[1] && !isNaN(Number(expenseMatch[1].replace(/,/g, ''))) ? expenseMatch[1] : expenseMatch[2];
     const rawDesc = expenseMatch[1] === rawNum ? (expenseMatch[2] || 'Direct Spend') : expenseMatch[1];
     const amount = Number(String(rawNum).replace(/,/g, ''));
-    const merchant = String(rawDesc || 'Direct Spend').trim();
+    const merchant = String(rawDesc || 'Direct Spend').replace(/\s+(?:via|by|using|with)\s+.*$/i, '').trim() || 'Direct Spend';
     if (amount > 0) {
       const cat = inferCategory(merchant + ' ' + message);
       const method = inferMethod(message);
-      persistTransaction({
+      await persistTransaction({
         type: 'expense',
         amount,
         merchant,
@@ -1547,7 +1652,7 @@ function runClientAutonomousCA(message) {
     const amount = Number(String(rawNum).replace(/,/g, ''));
     const source = (incomeMatch[2] || 'Client / Salary').trim();
     if (amount > 0) {
-      persistTransaction({
+      await persistTransaction({
         type: 'income',
         amount,
         source,
@@ -1764,10 +1869,10 @@ async function sendAssistantMessage(event) {
         renderAll();
       } catch (err) {
         // Fallback to client engine
-        reply = runClientAutonomousCA(message);
+        reply = await runClientAutonomousCA(message);
       }
     } else {
-      reply = runClientAutonomousCA(message);
+      reply = await runClientAutonomousCA(message);
     }
 
     state.assistantMessages.pop();
@@ -1788,11 +1893,11 @@ async function sendAssistantMessage(event) {
 // -------------------------------------------------------------
 // SAMPLE DATA SEEDING
 // -------------------------------------------------------------
-function seedDemoTransactions() {
+async function seedDemoTransactions() {
   const demoData = [
     { type: 'income', amount: 125000, source: 'Acme Corp — Monthly Salary', incomeType: 'Salary', method: 'Bank transfer', date: '2026-10-01', hidden: false },
     { type: 'income', amount: 35000, source: 'Freelance Design Consulting', incomeType: 'Freelance', method: 'UPI', date: '2026-10-14', hidden: false },
-    { type: 'expense', amount: 18500, merchant: 'Apex Heights — Office & Living Rent', category: 'Bills', method: 'Net banking', date: '2026-10-02', hidden: false },
+    { type: 'expense', amount: 18500, merchant: 'Apex Heights — Office & Living Rent', category: 'Bills', method: 'Net Banking', date: '2026-10-02', hidden: false },
     { type: 'expense', amount: 2450, merchant: 'State Electricity Board', category: 'Bills', method: 'UPI', date: '2026-10-05', hidden: false },
     { type: 'expense', amount: 6200, merchant: 'Nature Basket — Monthly Groceries', category: 'Food', method: 'UPI', date: '2026-10-08', hidden: false },
     { type: 'expense', amount: 3500, merchant: 'Cloud Hosting & Digital Services', category: 'Bills', method: 'Card', date: '2026-10-10', hidden: false },
@@ -1801,7 +1906,8 @@ function seedDemoTransactions() {
     { type: 'expense', amount: 15000, merchant: 'Nifty 50 Index Fund Monthly SIP', category: 'Other', method: 'Bank transfer', date: '2026-10-18', hidden: false }
   ];
 
-  demoData.forEach(tx => persistTransaction(tx));
+  // Sequential so signed-in users don't race nine POST + reload cycles
+  for (const tx of demoData) await persistTransaction(tx);
   renderAll();
   showToast('✓ Sample ledger populated with 9 verified entries! Explore your analytics.');
 }
@@ -1921,7 +2027,12 @@ async function submitAuth(event, mode) {
     renderAll();
     showToast(mode === 'register' ? 'Account created' : 'Signed in');
   } catch (err) {
-    // If backend is offline, enable mock login for seamless demonstration
+    // Real auth errors (wrong password, duplicate email…) must be shown, not bypassed
+    if (isServerAvailable) {
+      showToast(err.message);
+      return;
+    }
+    // Backend offline (static mode): enable local profile for seamless demonstration
     state.user = { id: 1, name: payload.name || 'Valued User', email: payload.email };
     writeJson(LEGACY_USER_KEY, state.user);
     closeModal('loginModal');

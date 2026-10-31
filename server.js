@@ -10,11 +10,11 @@ const OpenAI = require('openai');
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const IS_PROD = process.env.NODE_ENV === 'production';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_CHAT_HISTORY = 16;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'digital-ca-data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'digital-ca.sqlite');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -161,7 +161,10 @@ app.use('/api', (req, res, next) => {
   }
   next();
 });
-app.use(express.static(__dirname));
+// Only serve the front-end; never expose server source, config, database files or the legacy copy
+const PRIVATE_PATHS = /^\/(\.|server\.js|package(-lock)?\.json|readme\.txt|data|node_modules|digital-ca-edit)(\/|$)|\/\./i;
+app.use((req, res, next) => (PRIVATE_PATHS.test(req.path) ? res.status(404).end() : next()));
+app.use(express.static(__dirname, { dotfiles: 'deny' }));
 
 const rateBuckets = new Map();
 function rateLimit(limit = 120, windowMs = 10 * 60 * 1000) {
@@ -396,19 +399,7 @@ app.get('/api/bootstrap', requireAuth, (req, res) => {
     budgets,
     goals,
     investments,
-    investmentProfile: profile ? {
-      goal: profile.goal,
-      horizon: profile.horizon,
-      experience: profile.experience,
-      risk: profile.risk,
-      monthly: profile.monthly_investment,
-      emergency: profile.emergency_savings,
-      targetAmount: profile.target_amount,
-      existingInvestments: profile.existing_investments,
-      debt: profile.debt,
-      upcomingExpense: profile.upcoming_expense,
-      age: profile.age
-    } : {}
+    investmentProfile: profileFromRow(profile)
   });
 });
 
@@ -457,8 +448,130 @@ app.post('/api/categories', requireAuth, (req, res) => {
 
 app.delete('/api/categories/:name', requireAuth, (req, res) => {
   const name = req.params.name;
+  if (name === 'Other') return res.status(400).json({ error: 'The Other category cannot be removed.' });
   db.prepare('DELETE FROM categories WHERE user_id=? AND name=?').run(req.user.id, name);
+  db.prepare('INSERT OR IGNORE INTO categories(user_id,name) VALUES(?,?)').run(req.user.id, 'Other');
+  db.prepare("UPDATE transactions SET category='Other' WHERE user_id=? AND type='expense' AND category=?").run(req.user.id, name);
   res.json({ ok: true, categories: userCategories(req.user.id) });
+});
+
+// Investment Profile API
+function profileFromRow(profile) {
+  return profile ? {
+    goal: profile.goal,
+    horizon: profile.horizon,
+    experience: profile.experience,
+    risk: profile.risk,
+    monthly: profile.monthly_investment,
+    emergency: profile.emergency_savings,
+    targetAmount: profile.target_amount,
+    existingInvestments: profile.existing_investments,
+    debt: profile.debt,
+    upcomingExpense: profile.upcoming_expense,
+    age: profile.age
+  } : {};
+}
+
+app.put('/api/profile/investment', requireAuth, (req, res) => {
+  const b = req.body || {};
+  const text = v => String(v || '').trim().slice(0, 80) || null;
+  const num = v => Math.max(0, jsonSafeNumber(v, 0));
+  const age = Number.isInteger(Number(b.age)) && Number(b.age) > 0 && Number(b.age) < 120 ? Number(b.age) : null;
+  db.prepare(`
+    INSERT INTO investment_profiles(user_id,goal,horizon,experience,risk,monthly_investment,emergency_savings,target_amount,existing_investments,debt,upcoming_expense,age,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      goal=excluded.goal, horizon=excluded.horizon, experience=excluded.experience, risk=excluded.risk,
+      monthly_investment=excluded.monthly_investment, emergency_savings=excluded.emergency_savings,
+      target_amount=excluded.target_amount, existing_investments=excluded.existing_investments,
+      debt=excluded.debt, upcoming_expense=excluded.upcoming_expense, age=excluded.age, updated_at=excluded.updated_at
+  `).run(req.user.id, text(b.goal), text(b.horizon), text(b.experience), text(b.risk), num(b.monthly), num(b.emergency),
+    num(b.targetAmount), num(b.existingInvestments), num(b.debt), num(b.upcomingExpense), age, new Date().toISOString());
+  const row = db.prepare('SELECT * FROM investment_profiles WHERE user_id=?').get(req.user.id);
+  res.json({ ok: true, profile: profileFromRow(row) });
+});
+
+// Budgets API
+function upsertBudget(userId, body) {
+  const category = String(body.category || '').trim().slice(0, 80);
+  const month = /^\d{4}-\d{2}$/.test(String(body.month || '')) ? String(body.month) : new Date().toISOString().slice(0, 7);
+  const amount = Number(body.amount);
+  if (!category) throw new Error('Budget category is required.');
+  if (!validAmount(amount)) throw new Error('Budget amount must be positive.');
+  db.prepare('INSERT OR IGNORE INTO categories(user_id,name) VALUES(?,?)').run(userId, category);
+  db.prepare(`
+    INSERT INTO budgets(user_id,category,month,amount) VALUES(?,?,?,?)
+    ON CONFLICT(user_id,category,month) DO UPDATE SET amount=excluded.amount
+  `).run(userId, category, month, amount);
+  return db.prepare('SELECT * FROM budgets WHERE user_id=? AND category=? AND month=?').get(userId, category, month);
+}
+
+app.get('/api/budgets', requireAuth, (req, res) => {
+  res.json({ ok: true, budgets: db.prepare('SELECT * FROM budgets WHERE user_id=? ORDER BY month DESC').all(req.user.id) });
+});
+
+app.post('/api/budgets', requireAuth, (req, res) => {
+  try {
+    res.status(201).json({ ok: true, budget: upsertBudget(req.user.id, req.body || {}) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/budgets/:id', requireAuth, (req, res) => {
+  const info = db.prepare('DELETE FROM budgets WHERE id=? AND user_id=?').run(req.params.id, req.user.id);
+  if (!info.changes) return res.status(404).json({ error: 'Budget not found.' });
+  res.json({ ok: true });
+});
+
+// Financial Goals API
+function createGoal(userId, body) {
+  const name = String(body.name || '').trim().slice(0, 120);
+  const targetAmount = Number(body.target_amount ?? body.targetAmount);
+  const currentAmount = Math.max(0, jsonSafeNumber(body.current_amount ?? body.currentAmount, 0));
+  const rawDate = body.target_date || body.targetDate;
+  const targetDate = rawDate ? normalizeDate(rawDate) : null;
+  if (!name) throw new Error('Goal name is required.');
+  if (!validAmount(targetAmount)) throw new Error('Goal target amount must be positive.');
+  const id = crypto.randomUUID();
+  db.prepare('INSERT INTO financial_goals(id,user_id,name,target_amount,target_date,current_amount,created_at) VALUES(?,?,?,?,?,?,?)')
+    .run(id, userId, name, targetAmount, targetDate ? targetDate.slice(0, 10) : null, currentAmount, new Date().toISOString());
+  return db.prepare('SELECT * FROM financial_goals WHERE id=?').get(id);
+}
+
+app.get('/api/goals', requireAuth, (req, res) => {
+  res.json({ ok: true, goals: db.prepare('SELECT * FROM financial_goals WHERE user_id=? ORDER BY target_date').all(req.user.id) });
+});
+
+app.post('/api/goals', requireAuth, (req, res) => {
+  try {
+    res.status(201).json({ ok: true, goal: createGoal(req.user.id, req.body || {}) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch('/api/goals/:id', requireAuth, (req, res) => {
+  const goal = db.prepare('SELECT * FROM financial_goals WHERE id=? AND user_id=?').get(req.params.id, req.user.id);
+  if (!goal) return res.status(404).json({ error: 'Goal not found.' });
+  const b = req.body || {};
+  const current = b.current_amount ?? b.currentAmount;
+  const target = b.target_amount ?? b.targetAmount;
+  if (current !== undefined && !(Number(current) >= 0)) return res.status(400).json({ error: 'Current amount must be zero or more.' });
+  if (target !== undefined && !validAmount(target)) return res.status(400).json({ error: 'Goal target amount must be positive.' });
+  db.prepare('UPDATE financial_goals SET name=?, target_amount=?, current_amount=? WHERE id=? AND user_id=?').run(
+    String(b.name || goal.name).trim().slice(0, 120),
+    target !== undefined ? Number(target) : goal.target_amount,
+    current !== undefined ? Number(current) : goal.current_amount,
+    goal.id, req.user.id
+  );
+  res.json({ ok: true, goal: db.prepare('SELECT * FROM financial_goals WHERE id=?').get(goal.id) });
+});
+
+app.delete('/api/goals/:id', requireAuth, (req, res) => {
+  const info = db.prepare('DELETE FROM financial_goals WHERE id=? AND user_id=?').run(req.params.id, req.user.id);
+  if (!info.changes) return res.status(404).json({ error: 'Goal not found.' });
+  res.json({ ok: true });
 });
 
 // Investments API
@@ -612,7 +725,8 @@ app.post('/api/payments/process', (req, res) => {
     receiptNo,
     amount,
     status: 'Paid',
-    paidAt: now
+    paidAt: now,
+    stored: Boolean(userId)
   });
 });
 
@@ -648,42 +762,125 @@ app.get('/api/payments/history', (req, res) => {
 // (Gemini API + OpenAI API + Built-in Indian CA Expert Engine)
 // -------------------------------------------------------------
 
+function inferCategory(text) {
+  const t = String(text || '').toLowerCase();
+  if (/rent|electricity|bill|broadband|wifi|water|utility|recharge|power|gas|maintenance/.test(t)) return 'Bills';
+  if (/swiggy|zomato|coffee|cafe|lunch|dinner|breakfast|food|grocer|restaurant|pizza|burger|snack/.test(t)) return 'Food';
+  if (/uber|ola|metro|fuel|petrol|diesel|flight|train|railway|cab|auto|toll|parking/.test(t)) return 'Travel';
+  if (/amazon|flipkart|clothes|shoes|shopping|electronics|mall|apparel|myntra|zara/.test(t)) return 'Shopping';
+  if (/doctor|medicine|pharmacy|hospital|clinic|health|dental|lab|apollo/.test(t)) return 'Healthcare';
+  if (/course|tuition|books|udemy|school|college|exam|fee|education|class/.test(t)) return 'Education';
+  if (/movie|cinema|netflix|hotstar|game|spotify|entertainment|concert|theatre/.test(t)) return 'Entertainment';
+  return 'Other';
+}
+
+function inferMethod(text) {
+  const t = String(text || '').toLowerCase();
+  if (/card|credit|debit/.test(t)) return 'Card';
+  if (/netbanking|net banking|neft|rtgs|imps/.test(t)) return 'Net Banking';
+  if (/cash/.test(t)) return 'Cash';
+  return 'UPI';
+}
+
+// Parses "10,000", "10k", "5 lakh", "1.2 cr" into rupees
+function parseRupees(num, unit = '') {
+  const n = Number(String(num || '').replace(/,/g, ''));
+  if (!Number.isFinite(n)) return 0;
+  const u = String(unit || '').toLowerCase();
+  if (u === 'k') return n * 1000;
+  if (/^(l|lac|lakh|lakhs)$/.test(u)) return n * 100000;
+  if (/^(cr|crore|crores)$/.test(u)) return n * 10000000;
+  return n;
+}
+
+const AMOUNT_RE = '(?:₹|rs\\.?\\s?|inr\\s?)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*(k|lakhs?|lac|l|crores?|cr)?\\b';
+
+// Command parsers shared by the server engine (mirrored in app.js for guest mode)
+function parseBudgetCommand(message) {
+  const m = message.match(new RegExp(`\\b(?:set|create|make|add|update)\\s+(?:my\\s+|a\\s+|the\\s+)?([a-z][a-z &]*?)\\s+budget\\s+(?:to|of|at|as|=)?\\s*${AMOUNT_RE}`, 'i'))
+    || message.match(new RegExp(`\\bbudget\\s+(?:for|of)\\s+([a-z][a-z &]*?)\\s+(?:to|of|at|as|=)?\\s*${AMOUNT_RE}`, 'i'));
+  if (!m) return null;
+  const amount = parseRupees(m[2], m[3]);
+  const raw = m[1].trim();
+  if (!raw || !(amount > 0)) return null;
+  return { category: raw.charAt(0).toUpperCase() + raw.slice(1), amount };
+}
+
+function parseGoalCommand(message) {
+  const m = message.match(new RegExp(`(?:create|set|add|start|new)\\s+(?:a|an|my)?\\s*${AMOUNT_RE}\\s*(.*?)\\bgoal\\b(?:.*?(\\d+)\\s*(years?|yrs?|months?))?`, 'i'));
+  if (!m) return null;
+  const targetAmount = parseRupees(m[1], m[2]);
+  if (!(targetAmount > 0)) return null;
+  const label = (m[3] || '').replace(/\b(?:a|an|for|of|the)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  let targetDate = null;
+  if (m[4]) {
+    const d = new Date();
+    if (/^m/i.test(m[5])) d.setMonth(d.getMonth() + Number(m[4]));
+    else d.setFullYear(d.getFullYear() + Number(m[4]));
+    targetDate = d.toISOString().slice(0, 10);
+  }
+  const name = label ? `${label.charAt(0).toUpperCase() + label.slice(1)} Goal` : 'Savings Goal';
+  return { name, targetAmount, targetDate };
+}
+
 // Comprehensive Indian CA Expert Engine (Zero API Key Dependency & Fallback)
 function generateAutonomousCAReply(userId, message) {
   const lower = message.toLowerCase();
   const summary = financialSummary(userId, false);
-  const profile = db.prepare('SELECT * FROM investment_profiles WHERE user_id=?').get(userId) || {};
-  const recentTxs = db.prepare('SELECT * FROM transactions WHERE user_id=? AND hidden=0 ORDER BY date DESC LIMIT 12').all(userId);
+
+  // Command: Set Budget
+  const budget = parseBudgetCommand(message);
+  if (budget) {
+    try {
+      upsertBudget(userId, { category: budget.category, amount: budget.amount });
+      return `✓ Monthly budget for **${budget.category}** set to **₹${budget.amount.toLocaleString('en-IN')}**. Track it on your Dashboard under *Monthly Category Budgets*.`;
+    } catch (err) {
+      return `Could not set budget: ${err.message}`;
+    }
+  }
+
+  // Command: Create Goal
+  const goal = parseGoalCommand(message);
+  if (goal) {
+    try {
+      createGoal(userId, { name: goal.name, target_amount: goal.targetAmount, target_date: goal.targetDate });
+      return `✓ Created goal **${goal.name}** with a target of **₹${goal.targetAmount.toLocaleString('en-IN')}**${goal.targetDate ? ` by **${goal.targetDate}**` : ''}. It now appears under *Active Financial Goals* on your Dashboard.`;
+    } catch (err) {
+      return `Could not create goal: ${err.message}`;
+    }
+  }
 
   // Command: Add Expense
-  const expenseMatch = lower.match(/(?:spent|paid|bought|expense of|add expense) (?:₹|rs\.? ?)?(\d+(?:\.\d+)?)(?: (?:on|for) ([\w\s]+))?/i);
+  const expenseMatch = lower.match(/(?:spent|paid|bought|expense of|add expense) (?:₹|rs\.? ?)?(\d+(?:,\d+)*(?:\.\d+)?)(?: (?:on|for) ([\w\s&'-]+?))?(?: (?:via|by|using|with) [\w\s]+)?$/i);
   if (expenseMatch) {
-    const amount = Number(expenseMatch[1]);
+    const amount = Number(expenseMatch[1].replace(/,/g, ''));
     const merchant = (expenseMatch[2] || 'Unspecified').trim();
+    const category = inferCategory(`${merchant} ${message}`);
+    const method = inferMethod(message);
     if (amount > 0) {
       try {
-        const tx = upsertTransaction(userId, {
+        upsertTransaction(userId, {
           type: 'expense',
           amount,
           merchant,
-          category: 'Other',
-          method: 'UPI',
+          category,
+          method,
           date: new Date().toISOString().slice(0, 10),
           hidden: false
         });
-        return `✓ Recorded expense of **₹${amount.toLocaleString('en-IN')}** for **${merchant}** (Category: Other, Method: UPI). Your updated total recorded expenses are **₹${(summary.total_expenses + amount).toLocaleString('en-IN')}**.`;
+        return `✓ Recorded expense of **₹${amount.toLocaleString('en-IN')}** for **${merchant}** (Category: ${category}, Method: ${method}). Your updated total recorded expenses are **₹${(summary.total_expenses + amount).toLocaleString('en-IN')}**.`;
       } catch (err) {}
     }
   }
 
   // Command: Add Income
-  const incomeMatch = lower.match(/(?:received|earned|salary|credited|income of) (?:₹|rs\.? ?)?(\d+(?:\.\d+)?)(?: from ([\w\s]+))?/i);
+  const incomeMatch = lower.match(/(?:received|earned|salary|credited|income of) (?:₹|rs\.? ?)?(\d+(?:,\d+)*(?:\.\d+)?)(?: from ([\w\s&'-]+))?/i);
   if (incomeMatch) {
-    const amount = Number(incomeMatch[1]);
+    const amount = Number(incomeMatch[1].replace(/,/g, ''));
     const source = (incomeMatch[2] || 'Salary / Client').trim();
     if (amount > 0) {
       try {
-        const tx = upsertTransaction(userId, {
+        upsertTransaction(userId, {
           type: 'income',
           amount,
           source,
@@ -936,7 +1133,7 @@ Context of user:
 Always provide structured, actionable, and accurate advice grounded in Indian financial rules (AY 2026-27 tax slabs, RBI digital payments, SEBI guidelines). Use bullet points and markdown.`;
 
       finalText = await callGeminiApi(geminiKey, prior, systemPrompt);
-      usedModel = 'gemini-pro';
+      usedModel = GEMINI_MODEL;
     } catch (err) {
       console.warn('Gemini API call failed, falling back to next engine:', err.message);
     }
@@ -1072,7 +1269,10 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+app.use('/api', (req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 module.exports = app;
-app.listen(PORT, () => console.log(`✓ Digital CA Enterprise running at http://localhost:${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`✓ Digital CA Enterprise running at http://localhost:${PORT}`));
+}

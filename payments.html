@@ -571,14 +571,18 @@
       createdAt: new Date().toISOString()
     };
 
-    // Store in backend if running
+    // Store in backend if running (signed-in users get the ledger entry server-side)
+    let storedOnServer = false;
     try {
-      await fetch('/api/payments/process', {
+      const res = await fetch('/api/payments/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Digital-CA': '1' },
         credentials: 'same-origin',
         body: JSON.stringify(paymentRecord)
       });
+      if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
+        storedOnServer = Boolean((await res.json()).stored);
+      }
     } catch (err) {}
 
     // Store in client-side payment history
@@ -586,8 +590,8 @@
     history.unshift(paymentRecord);
     localStorage.setItem('digitalca_payment_history', JSON.stringify(history.slice(0, 50)));
 
-    // Store in transactions ledger so it appears on Dashboard
-    recordToExpenseLedger(paymentRecord);
+    // Store in local transactions ledger so it appears on Dashboard (guest / offline mode)
+    if (!storedOnServer) recordToExpenseLedger(paymentRecord);
 
     setTimeout(() => {
       submitBtn.disabled = false;
