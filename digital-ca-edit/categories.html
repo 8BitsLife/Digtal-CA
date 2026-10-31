@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Categories — Digital CA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" aria-label="Digital CA">DC</div>
+      <span>Digital CA</span>
+    </a>
+    <nav class="links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="payments.html">Online Payments</a>
+      <a href="categories.html" style="color:#fff;border-color:var(--acid)">Categories</a>
+      <a href="hidden-expenses.html">Hidden Expenses</a>
+      <a href="investments.html">Investment AI</a>
+      <a href="reduce-expenses.html">Reduce Expenses</a>
+      <a href="taxes.html">Tax Management</a>
+      <a href="news.html">Money Updates</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-outline nav-login" data-login>Login</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="kicker" style="color:var(--acid)">Accounting Structure</div>
+    <h1>Categories</h1>
+    <p>Create categories that match your real lifestyle or small business chart of accounts. These automatically integrate across the terminal and dashboard.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="toolbar" style="margin-bottom:24px">
+      <div>
+        <h2 style="font-family:Georgia,serif;margin:0">Expense Categories</h2>
+        <p class="muted">Organized by verified spending frequency and total recorded amount.</p>
+      </div>
+      <button class="btn btn-dark" type="button" data-open-cat-modal>＋ Add Category</button>
+    </div>
+    <div id="categoryGrid" class="category-grid"></div>
+  </div>
+</section>
+
+<div class="modal" id="catModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 style="font-family:Georgia,serif;margin:0">New Category</h2>
+      <button class="close" type="button" data-close-modal="catModal">×</button>
+    </div>
+    <form id="catForm" class="form" style="margin-top:16px">
+      <label>
+        Category Name
+        <input id="catName" class="input" placeholder="e.g. SaaS & Software, Consulting, Pet Care" required>
+      </label>
+      <button class="btn btn-dark" type="submit">Create Category →</button>
+    </form>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="copyright">
+      <span>© 2026 Digital CA · Accounting & Tax Management</span>
+      <a href="index.html">Back to Home</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

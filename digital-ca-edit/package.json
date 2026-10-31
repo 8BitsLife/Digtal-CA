@@ -1,0 +1,19 @@
+{
+  "name": "digital-ca-v8",
+  "version": "8.0.0",
+  "private": true,
+  "description": "Digital CA personal finance web app with authenticated server-side storage and AI financial assistant",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check app.js && node --check server.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^5.12.2"
+  }
+}

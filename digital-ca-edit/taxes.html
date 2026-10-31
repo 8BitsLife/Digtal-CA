@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart Tax Management & Regime Optimizer — Digital CA</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .tax-panel { background: #fff; border: 1px solid var(--line); padding: 28px; border-radius: 4px; }
+    .tax-panel h2 { font-family: Georgia, serif; font-size: 26px; font-weight: 400; margin: 6px 0 16px; }
+    .deductions-box { background: #f8faf8; border: 1px solid var(--line); padding: 18px; margin: 16px 0; border-radius: 2px; }
+    .deductions-box h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--navy); }
+    .regime-badge { display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 2px; text-transform: uppercase; letter-spacing: .08em; }
+    .badge-win { background: #e8f7ef; color: #17643a; border: 1px solid #c2ebd1; }
+    @media (max-width: 860px) {
+      .tax-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-mark">DC</div>
+      <span>Digital CA</span>
+    </a>
+    <nav class="links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="payments.html">Online Payments</a>
+      <a href="categories.html">Categories</a>
+      <a href="hidden-expenses.html">Hidden Expenses</a>
+      <a href="investments.html">Investment AI</a>
+      <a href="reduce-expenses.html">Reduce Expenses</a>
+      <a href="taxes.html" style="color:#fff;border-color:var(--acid)">Tax Management</a>
+      <a href="news.html">Money Updates</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-outline nav-login" data-login>Login</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="kicker" style="color:var(--acid)">AY 2026–27 Union Budget Compliant</div>
+    <h1>Smart Tax Management & Regime Optimizer</h1>
+    <p>Simulate New vs Old Tax Regime side-by-side with Section 87A full rebate (up to ₹12 Lakhs tax-free under New Regime) and comprehensive deduction modeling.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="tax-grid">
+      <!-- Input Panel -->
+      <div class="tax-panel">
+        <div class="kicker">Salary & Deductions Input</div>
+        <h2>Tax Calculator</h2>
+        <form id="taxForm" class="form">
+          <label>
+            Annual Gross Salary / Professional Income (INR)
+            <input id="taxSalary" type="number" min="0" step="1000" placeholder="e.g. 1200000" value="1200000" required>
+          </label>
+
+          <label>
+            Taxpayer Category / Age
+            <select id="taxAge">
+              <option value="under60" selected>Individual (Below 60 Years)</option>
+              <option value="60to79">Senior Citizen (60 to 79 Years)</option>
+              <option value="80plus">Super Senior Citizen (80+ Years)</option>
+            </select>
+          </label>
+
+          <!-- Old Regime Deductions Section -->
+          <div class="deductions-box">
+            <h4>Eligible Deductions (For Old Regime Comparison)</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <label>
+                Section 80C (PPF, ELSS, EPF)
+                <input id="tax80C" type="number" min="0" max="150000" placeholder="Max ₹1,50,000" value="150000">
+              </label>
+              <label>
+                Section 80D (Health Insurance)
+                <input id="tax80D" type="number" min="0" max="75000" placeholder="Max ₹75,000" value="25000">
+              </label>
+              <label>
+                NPS 80CCD(1B) (Tier 1)
+                <input id="taxNPS" type="number" min="0" max="50000" placeholder="Max ₹50,000" value="50000">
+              </label>
+              <label>
+                Section 24(b) (Home Loan Int.)
+                <input id="taxHomeLoan" type="number" min="0" max="200000" placeholder="Max ₹2,00,000" value="0">
+              </label>
+            </div>
+            <label style="margin-top:10px">
+              Annual HRA Exemption (House Rent)
+              <input id="taxHRA" type="number" min="0" placeholder="₹ 0" value="120000">
+            </label>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-dark" type="submit" style="flex:1;padding:14px">Calculate & Compare Regimes →</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Output Showcase -->
+      <div>
+        <div id="taxResult" class="showcase">
+          <div class="kicker" style="color:var(--acid)">AY 2026–27 Side-by-Side Tax Comparison</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 16px">
+            <h2 style="font-family:Georgia,serif;margin:0;font-size:38px">₹0</h2>
+            <span class="pill" style="font-size:11px">✓ New Regime: Tax Free</span>
+          </div>
+          <p style="color:#d5e0ea;font-size:14px;margin-bottom:18px">
+            Under the <strong>New Tax Regime</strong> (AY 2026-27), salaried individuals earning up to ₹12 Lakhs enjoy full <strong>Section 87A rebate</strong>, resulting in <strong>₹0 Total Tax</strong>!
+          </p>
+          <div class="tax-breakdown">
+            <div class="tax-line"><span>Gross Annual Salary</span><b>₹12,00,000</b></div>
+            <div class="tax-line"><span>Standard Deduction Applied</span><b>₹75,000</b></div>
+            <div class="tax-line"><span>Taxable Income Used</span><b>₹11,25,000</b></div>
+            <div class="tax-line"><span>Slab Tax before Rebate</span><b>₹52,500</b></div>
+            <div class="tax-line"><span>Section 87A Full Rebate</span><b style="color:var(--acid)">− ₹52,500</b></div>
+            <div class="tax-line" style="border-top:1px solid rgba(255,255,255,.2);padding-top:10px">
+              <span>Total Tax Payable</span>
+              <b style="color:var(--acid);font-size:18px">₹0</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:20px">
+          <div class="kicker">Digital CA Rule of Thumb</div>
+          <h3 style="font-family:Georgia,serif;font-size:20px;margin:6px 0 10px">Which regime should you pick?</h3>
+          <p class="muted" style="line-height:1.65;font-size:13px">
+            • <strong>Choose New Regime</strong> if your gross salary is ≤ ₹12.75 Lakhs (with standard deduction ₹75k, taxable is ≤ ₹12L = zero tax), or if your total deductions under Old Regime are below ₹3.75 Lakhs.<br>
+            • <strong>Choose Old Regime</strong> only if you have large deductions (Home Loan interest ₹2L + HRA > ₹1.5L + 80C ₹1.5L + NPS ₹50k) totaling over ₹4 Lakhs.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="copyright">
+      <span>© 2026 Digital CA · Certified Tax Management & Compliance</span>
+      <a href="index.html">Back to Home</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+<script>
+  // Auto calculate on load
+  document.addEventListener('DOMContentLoaded', () => {
+    calculateTax();
+  });
+</script>
+</body>
+</html>

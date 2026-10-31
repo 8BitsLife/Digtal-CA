@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hidden Expenses Vault — Digital CA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" aria-label="Digital CA">DC</div>
+      <span>Digital CA</span>
+    </a>
+    <nav class="links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="payments.html">Online Payments</a>
+      <a href="categories.html">Categories</a>
+      <a href="hidden-expenses.html" style="color:#fff;border-color:var(--acid)">Hidden Expenses</a>
+      <a href="investments.html">Investment AI</a>
+      <a href="reduce-expenses.html">Reduce Expenses</a>
+      <a href="taxes.html">Tax Management</a>
+      <a href="news.html">Money Updates</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-outline nav-login" data-login>Login</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="kicker" style="color:var(--acid)">Confidential Vault</div>
+    <h1>Hidden Expenses</h1>
+    <p>A separate password-protected vault for confidential spending you want isolated from normal screens, reports, and casual view.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="hidden-lock">
+      <div class="lock-icon">🔒</div>
+      <div class="kicker">Protected Financial Vault</div>
+      <h2 style="font-family:Georgia,serif;margin:8px 0 12px">Enter your vault password</h2>
+      <p class="muted" style="margin-bottom:20px">Protected with cryptographic hashing. First-time visitors can set their vault password here.</p>
+      <form class="form" id="hiddenUnlockForm">
+        <label>
+          Vault Password
+          <input id="hiddenPass" type="password" placeholder="Enter at least 6 characters" minlength="6" required>
+        </label>
+        <button class="btn btn-dark" type="submit" style="padding:14px">Unlock Vault →</button>
+      </form>
+      <button class="btn btn-light" type="button" style="margin-top:12px;width:100%" data-set-hidden-password>Set / Change Password</button>
+    </div>
+
+    <div class="hidden-content">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Vault Unlocked</div>
+          <h2>Private Expenditures</h2>
+        </div>
+        <button class="btn btn-light" type="button" data-lock-hidden>🔒 Lock Vault</button>
+      </div>
+      <div class="secret-grid">
+        <div class="panel">
+          <div class="kicker">Confidential Records</div>
+          <h3 style="font-family:Georgia,serif;margin:6px 0 16px">Stored Private Expenses</h3>
+          <div id="hiddenRows" style="display:grid;gap:10px"></div>
+        </div>
+        <div class="notice">
+          <strong>Privacy Architecture:</strong><br><br>
+          Transactions stored in this folder are excluded from the main dashboard, analytics charts, and normal AI queries unless explicitly requested by the authenticated owner.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal" id="passwordModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 style="font-family:Georgia,serif;margin:0">Set Vault Password</h2>
+      <button class="close" type="button" data-close-modal="passwordModal">×</button>
+    </div>
+    <form class="form" id="hiddenPasswordForm" style="margin-top:16px">
+      <label>
+        New Vault Password
+        <input id="newHiddenPass" type="password" minlength="6" placeholder="At least 6 characters" required>
+      </label>
+      <button class="btn btn-dark" type="submit">Save Vault Password →</button>
+    </form>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="copyright">
+      <span>© 2026 Digital CA · Privacy by Design</span>
+      <a href="index.html">Back to Home</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Investment AI & Wealth Architecture — Digital CA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" aria-label="Digital CA">DC</div>
+      <span>Digital CA</span>
+    </a>
+    <nav class="links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="payments.html">Online Payments</a>
+      <a href="categories.html">Categories</a>
+      <a href="hidden-expenses.html">Hidden Expenses</a>
+      <a href="investments.html" style="color:#fff;border-color:var(--acid)">Investment AI</a>
+      <a href="reduce-expenses.html">Reduce Expenses</a>
+      <a href="taxes.html">Tax Management</a>
+      <a href="news.html">Money Updates</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-outline nav-login" data-login>Login</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="kicker" style="color:var(--acid)">Digital CA / Intelligence</div>
+    <h1>Investment AI & Wealth Architecture</h1>
+    <p>Not a speculative stock-picking screen. An institutional financial reasoning layer that evaluates your cash flow surplus, emergency runway, and risk profile before crafting your wealth blueprint.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:45px">
+  <div class="container">
+    <div class="ai-hero">
+      <div class="ai-command">
+        <div>
+          <div class="kicker" style="color:var(--acid)">Live Financial Context</div>
+          <h2>Your money,<br>read as a system.</h2>
+          <p>Digital CA translates your verified transaction history into a structured financial diagnostic. The AI evaluates liquidity, asset allocation, and goal feasibility.</p>
+        </div>
+        <div><span class="pill">Verified Accounting Data</span></div>
+      </div>
+      <div class="ai-signal">
+        <small>Current Recorded Surplus</small>
+        <div class="big" id="aiSurplus">₹0</div>
+        <div>
+          <strong id="aiCoverage">0 transactions</strong><br>
+          <span>powering this analysis</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:30px">
+  <div class="container">
+    <div id="investmentSummary" class="investment-summary"></div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:30px">
+  <div class="container">
+    <div class="panel profile-panel">
+      <div class="section-head">
+        <div>
+          <div class="kicker">01 / Context & Goals</div>
+          <h2>Give the AI the missing pieces.</h2>
+        </div>
+        <p class="muted">Transactions show past behaviour. Your target horizon and risk comfort explain what you want your wealth to achieve.</p>
+      </div>
+
+      <form id="investmentProfileForm" class="form investment-profile-form">
+        <div class="form-grid">
+          <label>
+            Primary Goal
+            <select id="invGoal">
+              <option selected>Long-term wealth</option>
+              <option>Retirement & Financial Independence</option>
+              <option>Emergency reserve</option>
+              <option>House purchase</option>
+              <option>Higher Education</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>
+            Time Horizon
+            <select id="invHorizon">
+              <option>10+ years</option>
+              <option selected>5–10 years</option>
+              <option>3–5 years</option>
+              <option>Less than 3 years</option>
+            </select>
+          </label>
+          <label>
+            Market Experience
+            <select id="invExperience">
+              <option>Beginner</option>
+              <option selected>Intermediate</option>
+              <option>Experienced</option>
+            </select>
+          </label>
+          <label>
+            Risk Comfort
+            <select id="invRisk">
+              <option selected>Moderate</option>
+              <option>Conservative</option>
+              <option>Aggressive</option>
+              <option>Not sure</option>
+            </select>
+          </label>
+          <label>
+            Target Monthly Investment (SIP)
+            <input id="invMonthly" type="number" min="0" placeholder="₹15,000" value="15000">
+          </label>
+          <label>
+            Current Liquid Emergency Reserve
+            <input id="invEmergency" type="number" min="0" placeholder="₹1,00,000" value="100000">
+          </label>
+          <label>
+            Goal Target Amount
+            <input id="invTarget" type="number" min="0" placeholder="₹25,00,000" value="2500000">
+          </label>
+          <label>
+            Existing Total Investments
+            <input id="invExisting" type="number" min="0" placeholder="₹3,50,000" value="350000">
+          </label>
+          <label>
+            Total Outstanding Debt / Loans
+            <input id="invDebt" type="number" min="0" placeholder="₹0" value="0">
+          </label>
+          <label>
+            Upcoming Major Expense (1-2 Yrs)
+            <input id="invUpcoming" type="number" min="0" placeholder="₹0" value="0">
+          </label>
+          <label>
+            Age
+            <input id="invAge" type="number" min="18" max="100" placeholder="Age" value="32">
+          </label>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-top:16px">
+          <button class="btn btn-dark" type="submit" style="padding:14px 22px">Run Investment AI Diagnostic →</button>
+          <span id="aiStatus" class="muted" style="font-weight:600"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:30px">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">01B / Portfolio Asset Allocation</div>
+        <h2>What you actually own.</h2>
+      </div>
+      <p class="muted">Add real holdings to evaluate your asset allocation percentages (Equity vs Debt vs Gold).</p>
+    </div>
+
+    <div class="investment-portfolio-grid">
+      <div class="panel">
+        <div class="kicker">Portfolio Entry</div>
+        <h3 style="font-family:Georgia,serif;font-weight:400;font-size:26px;margin:8px 0 16px">Add a Holding</h3>
+        <form id="portfolioForm" class="form">
+          <label>
+            Holding Name
+            <input name="name" maxlength="120" placeholder="e.g. Nifty 50 Index Fund" required>
+          </label>
+          <label>
+            Asset Class
+            <input name="assetClass" maxlength="80" placeholder="e.g. Equity Index, Sovereign Gold, PPF" required>
+          </label>
+          <label>
+            Current Value (INR)
+            <input name="value" type="number" min="1" step="0.01" placeholder="₹ 0.00" required>
+          </label>
+          <label>
+            Notes <span class="muted">(optional)</span>
+            <textarea name="notes" rows="2" maxlength="300" placeholder="e.g. Monthly SIP 5k, lock-in till 2027"></textarea>
+          </label>
+          <button class="btn btn-dark" type="submit">Add Holding →</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="kicker">Recorded Portfolio Value</div>
+        <h2 id="portfolioTotal" style="font-family:Georgia,serif;font-weight:400;font-size:44px;margin:8px 0">₹0</h2>
+        <div id="portfolioAllocation" style="display:grid;gap:12px;margin-top:18px"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <div id="portfolioList" class="portfolio-list"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" style="padding-top:60px">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">02 / Institutional Diagnostic</div>
+        <h2>What your finances suggest.</h2>
+      </div>
+      <p id="investmentAdviceIntro" class="muted">Analysis grounded in your actual transactions and risk parameters.</p>
+    </div>
+    <div id="investmentAdvice" class="advice-list"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">03 / Guardrails</div>
+        <h2>Good advice starts with good boundaries.</h2>
+      </div>
+    </div>
+    <div class="investment-grid">
+      <div class="risk">
+        <div class="kicker">Liquidity</div>
+        <h3>Protect what you may need soon.</h3>
+        <p class="muted">Short-term needs and emergency reserves should remain in high-liquidity capital preservation accounts.</p>
+      </div>
+      <div class="risk">
+        <div class="kicker">Time Horizon</div>
+        <h3>Match the strategy to the goal.</h3>
+        <p class="muted">A 2-year goal requires capital stability, while a 10-year horizon unlocks the compounding engine of equities.</p>
+      </div>
+      <div class="risk">
+        <div class="kicker">Fiduciary Care</div>
+        <h3>Every insight points back to data.</h3>
+        <p class="muted">Digital CA shows why an insight appeared and never fabricates speculative returns or arbitrary stock tips.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="copyright">
+      <span>© 2026 Digital CA · Institutional Financial Education</span>
+      <a href="index.html">Back to Home</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

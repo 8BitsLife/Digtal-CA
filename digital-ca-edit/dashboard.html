@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard — Digital CA</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .tx-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tx-filters { display: flex; gap: 8px; flex: 1; max-width: 600px; }
+    .tx-filters input, .tx-filters select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 2px; font: inherit; font-size: 13px; background: #fff; }
+    .tx-filters input { flex: 2; }
+    .tx-filters select { flex: 1; }
+  </style>
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" aria-label="Digital CA">DC</div>
+      <span>Digital CA</span>
+    </a>
+    <nav class="links">
+      <a href="dashboard.html" style="color:#fff;border-color:var(--acid)">Dashboard</a>
+      <a href="payments.html">Online Payments</a>
+      <a href="categories.html">Categories</a>
+      <a href="hidden-expenses.html">Hidden Expenses</a>
+      <a href="investments.html">Investment AI</a>
+      <a href="reduce-expenses.html">Reduce Expenses</a>
+      <a href="taxes.html">Tax Management</a>
+      <a href="news.html">Money Updates</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-outline nav-login" data-login>Login</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="kicker" style="color:var(--acid)">Your Financial Command Center</div>
+    <h1>Dashboard</h1>
+    <p>Real-time cash flow monitoring, predictive category budgets, and verified accounting ledger. Every insight is grounded in your actual transactions.</p>
+  </div>
+</section>
+
+<section class="quick-actions-section">
+  <div class="container">
+    <div class="quick-actions">
+      <div>
+        <div class="kicker">Direct Accounting Entry</div>
+        <h2>Record money in seconds</h2>
+        <p class="muted">Record incoming revenue, routine expenses, or pay invoices directly.</p>
+      </div>
+      <div class="quick-buttons">
+        <a class="btn btn-gold" href="payments.html">Pay online ↗</a>
+        <button class="btn btn-dark" data-add="expense">＋ Expense</button>
+        <button class="btn btn-light" data-add="income">＋ Income</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:42px">
+  <div class="container">
+    <div class="cards dashboard-cards">
+      <div class="card">
+        <div class="kicker">Total Income</div>
+        <h2 id="incomeTotal">₹0</h2>
+        <p>From verified revenue & salary entries.</p>
+      </div>
+      <div class="card">
+        <div class="kicker">Total Expenses</div>
+        <h2 id="expenseTotal">₹0</h2>
+        <p>Tracked routine expenditures.</p>
+      </div>
+      <div class="card">
+        <div class="kicker">Net Surplus</div>
+        <h2 id="netTotal">₹0</h2>
+        <p>Available investable capital.</p>
+      </div>
+      <div class="card">
+        <div class="kicker">Savings Rate</div>
+        <h2 id="savingsRate">0.0%</h2>
+        <p>Net savings divided by income.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div id="budgetGoalDashboard" class="dashboard-secondary-grid"></div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Cash Flow Analytics</div>
+        <h2>Last 6 Months</h2>
+      </div>
+    </div>
+    <div class="showcase" style="background:#fff;color:var(--ink);border:1px solid var(--line);height:400px;padding:24px">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <p class="muted" style="margin-top:14px">Calculated automatically from your transaction ledger.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Ledger Activity</div>
+        <h2>Your Transactions</h2>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" id="exportCsvBtn" style="color:var(--navy);border-color:var(--navy)">Export CSV ↓</button>
+        <a class="btn btn-gold" href="reduce-expenses.html">Find Savings ↗</a>
+      </div>
+    </div>
+
+    <div class="tx-toolbar">
+      <div class="tx-filters">
+        <input type="text" id="txSearchInput" placeholder="🔍 Search payee, description, or notes…">
+        <select id="txTypeFilter">
+          <option value="All">All Types</option>
+          <option value="expense">Expenses Only</option>
+          <option value="income">Income Only</option>
+        </select>
+        <select id="txCatFilter">
+          <option value="All">All Categories</option>
+          <option value="Bills">Bills</option>
+          <option value="Food">Food</option>
+          <option value="Travel">Travel</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Healthcare">Healthcare</option>
+          <option value="Education">Education</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="muted" style="font-size:12px">Auto-synced with Digital CA Direct Terminal</div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Payee / Description</th>
+            <th>Category</th>
+            <th>Method</th>
+            <th>Amount</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="recentRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="container">
+    <div class="cards">
+      <a class="card" href="reduce-expenses.html">
+        <div class="kicker">Waste Hunter AI</div>
+        <h3>Where can you cut spending?</h3>
+        <p>Detect duplicate subscriptions, high-frequency micro-spends and calculate compound SIP potential.</p>
+      </a>
+      <a class="card" href="investments.html">
+        <div class="kicker">Investment AI</div>
+        <h3>Institutional Wealth Blueprint</h3>
+        <p>Calculate your Financial Health Score, Emergency Reserve runway, and asset allocation percentages.</p>
+      </a>
+      <a class="card" href="taxes.html">
+        <div class="kicker">Tax Optimizer</div>
+        <h3>Dual Regime Tax Engine</h3>
+        <p>Compare New vs Old Tax Regime side-by-side for AY 2026-27 with Section 87A rebate and 80C deductions.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="copyright">
+      <span>© 2026 Digital CA · Enterprise Personal & Business Finance</span>
+      <a href="index.html">Back to Home</a>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="addModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <div class="kicker" id="entryKicker">Expense</div>
+        <h2 style="font-family:Georgia,serif" id="entryTitle">Add Expense</h2>
+        <p class="muted" id="entryHelp">Record where your money went.</p>
+      </div>
+      <button class="close" type="button" data-close-modal="addModal">×</button>
+    </div>
+    <form id="addForm" class="form">
+      <div class="entry-type-switch">
+        <button type="button" class="entry-tab active" data-entry-type="expense">Expense</button>
+        <button type="button" class="entry-tab" data-entry-type="income">Income</button>
+      </div>
+      <label>
+        Amount (INR)
+        <input name="amount" type="number" min="0.01" step="0.01" required placeholder="₹ 0.00">
+      </label>
+      <div id="expenseFields">
+        <label>
+          Paid to / Payee description
+          <input name="merchant" placeholder="e.g. Swiggy, Uber, Rent, Reliance Fresh">
+        </label>
+        <label>
+          Category
+          <select name="category" data-cat-select></select>
+        </label>
+        <label>
+          Payment Method
+          <select name="method">
+            <option>UPI</option>
+            <option>Card</option>
+            <option>Net Banking</option>
+            <option>Cash</option>
+            <option>Digital CA Direct Gateway</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label class="check-row">
+          <input name="hidden" type="checkbox"> Save in Hidden Expenses Vault
+        </label>
+      </div>
+      <div id="incomeFields" hidden>
+        <label>
+          Income source / Client
+          <input name="source" placeholder="e.g. Tech Corp Salary, Client Retainer, Freelance">
+        </label>
+        <label>
+          Income type
+          <select name="incomeType">
+            <option>Salary</option>
+            <option>Business sales</option>
+            <option>Freelance</option>
+            <option>Rental income</option>
+            <option>Investment income</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>
+          Received via
+          <select name="incomeMethod">
+            <option>Bank transfer</option>
+            <option>UPI</option>
+            <option>Cheque</option>
+            <option>Cash</option>
+            <option>Other</option>
+          </select>
+        </label>
+      </div>
+      <label>
+        Date
+        <input name="date" type="date" required>
+      </label>
+      <button class="btn btn-dark" id="saveEntryBtn">Save expense →</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
