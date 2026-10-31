@@ -39,7 +39,7 @@ KEY UPGRADES & PROBLEM RESOLUTIONS
 
 3. CURED & ELEVATED ARTIFICIAL INTELLIGENCE (Always-On CA Intelligence)
    - Built-in multi-tier AI architecture:
-     * Tier 1: Google Gemini API (gemini-1.5-flash / gemini-2.5-flash) via native REST.
+     * Tier 1: Google Gemini API (gemini-2.5-flash, configurable via GEMINI_MODEL) via native REST.
      * Tier 2: OpenAI API (gpt-4o-mini).
      * Tier 3: Autonomous Digital CA Neural Engine (Built-in Indian Chartered Accountant
        reasoning core that runs 100% out-of-the-box with ZERO API keys required).
@@ -84,7 +84,8 @@ Simply open 'index.html', 'dashboard.html', or 'payments.html' in Google Chrome,
 Edge, or any web browser.
 
 OPTION B: Full Express & SQLite Backend
-1. Ensure Node.js 22+ is installed.
+1. Ensure Node.js 22.5+ is installed (uses the built-in node:sqlite module).
+   Install dependencies: npm install
 2. (Optional) Copy .env.example to .env and add GEMINI_API_KEY if desired.
 3. Start the server:
    node server.js
